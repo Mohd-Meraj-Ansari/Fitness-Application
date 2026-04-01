@@ -4,28 +4,40 @@ import com.fitness.activityservice.dto.ActivityRequest;
 import com.fitness.activityservice.dto.ActivityResponse;
 import com.fitness.activityservice.entity.Activity;
 import com.fitness.activityservice.repository.ActivityRepository;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class ActivityService {
 
     @Autowired
     private ActivityRepository activityRepository;
 
     @Autowired
-    private UservalidationService  uservalidationService;
+    private UservalidationService uservalidationService;
+
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+
+    @Value("${rabbitmq.exchange.name}")
+    private String exchange;
+
+    @Value("${rabbitmq.routing.key}")
+    private String routingKey;
 
     public ActivityResponse trackActivity(ActivityRequest request) {
 
         boolean isValidUser = uservalidationService.validateUser(request.getUserId());
 
-        if(!isValidUser)
-        {
-            throw new RuntimeException("Invalid user "+ request.getUserId());
+        if (!isValidUser) {
+            throw new RuntimeException("Invalid user " + request.getUserId());
         }
         Activity activity = Activity.builder()
                 .userId(request.getUserId())
@@ -36,6 +48,13 @@ public class ActivityService {
                 .additionalMetrics(request.getAdditionalMetrics())
                 .build();
         Activity saveActivity = activityRepository.save(activity);
+
+        //publish to rabbitMQ
+        try{
+        rabbitTemplate.convertAndSend(exchange,routingKey,saveActivity);
+        } catch (Exception e) {
+            log.error("failed to publish activity to rabbitMQ",e);
+        }
         return mapToResponse(saveActivity);
     }
 
