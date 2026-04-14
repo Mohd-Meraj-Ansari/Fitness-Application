@@ -1,6 +1,5 @@
 package com.fitness.aiservice.entity;
 
-import jdk.jfr.DataAmount;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -12,7 +11,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Document(collection="recommendations")
+@Document(collection = "recommendations")
 @Data
 @Builder
 @AllArgsConstructor
